@@ -175,7 +175,7 @@ if img_file:
     with st.spinner("Procesando imagen..."):
         img = Image.open(img_file)
         img_array = preprocesar_imagen(img)
-        textos = reader.readtext(img_array, detail=0)
+        textos = leer_texto(img_array)
         codigo_detectado = detectar_codigos(textos)
     
     if codigo_detectado:
@@ -200,7 +200,7 @@ if uploaded_files:
     for uploaded_file in uploaded_files:
         img = Image.open(uploaded_file)
         img_array = preprocesar_imagen(img)
-        textos = reader.readtext(img_array, detail=0)
+        textos = leer_texto(img_array)
         codigo = detectar_codigos(textos)
         if codigo:
             valido, _ = validar_codigo(codigo, df)
