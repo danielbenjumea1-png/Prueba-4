@@ -1,0 +1,2 @@
+📚 Inventario Biblioteca UCC - Sede Medellín
+Una aplicación web construida con Streamlit para gestionar el inventario de la biblioteca UCC en Medellín. Utiliza OCR (Reconocimiento Óptico de Caracteres) para escanear códigos de libros automáticamente, actualiza un archivo Excel en tiempo real y permite entradas manuales o en lote. Incluye características como búsqueda, backups automáticos y exportación a múltiples formatos.
