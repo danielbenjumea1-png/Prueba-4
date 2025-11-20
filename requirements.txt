@@ -4,6 +4,7 @@ numpy==1.26.2
 Pillow==10.1.0
 openpyxl==3.1.2
 reportlab==4.0.7
-easyocr==1.7.1
+pytesseract
+opencv-python-headless
 torch==2.1.0
 torchvision==0.16.0
