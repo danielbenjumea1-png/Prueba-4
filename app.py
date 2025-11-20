@@ -13,18 +13,23 @@ from reportlab.pdfgen import canvas
 from paddleocr import PaddleOCR
 
 # =====================================
-# OCR - PaddleOCR (funciona en Streamlit)
+# OCR - PaddleOCR (FUNCIONAL EN STREAMLIT)
 # =====================================
 
 @st.cache_resource
 def cargar_ocr():
     return PaddleOCR(
-        use_angle_cls=True,
         lang="es",
+        use_angle_cls=False,   # <-- Streamlit Cloud NO soporta cls=True en algunas builds
         show_log=False
     )
 
-# PREPROCESAMIENTO
+ocr = cargar_ocr()
+
+# =====================================
+# PREPROCESAR IMAGEN
+# =====================================
+
 def preprocesar_imagen(img):
     img_gray = img.convert("L")
     img_enhanced = ImageEnhance.Contrast(img_gray).enhance(2.0)
@@ -32,39 +37,41 @@ def preprocesar_imagen(img):
 
     if len(arr.shape) == 2:
         arr_bgr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
-    elif arr.shape[2] == 4:
-        arr_bgr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
     else:
         arr_bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
     return arr_bgr
 
-# OCR
+# =====================================
+# LEER TEXTO (OCR)
+# =====================================
+
 def leer_texto(img_array):
-    ocr = cargar_ocr()
     resultado = ocr.ocr(img_array)
 
     textos = []
-    if resultado and resultado[0]:
-        for linea in resultado[0]:
-            textos.append(linea[1][0])
+    if resultado and len(resultado) > 0:
+        for linea in resultado:
+            for palabra in linea:
+                textos.append(palabra[1][0])
 
     return textos
 
-# Detectar códigos
+# =====================================
+# DETECTAR CÓDIGOS
+# =====================================
+
 def detectar_codigos(textos):
     excluidos = [
-        "sistemadeinformacion",
-        "bibliografico",
-        "biblioteca",
-        "universidad",
-        "cooperativa",
-        "colombia"
+        "sistemadeinformacion", "bibliografico", "biblioteca",
+        "universidad", "cooperativa", "colombia"
     ]
+
     posibles = []
 
     for t in textos:
         limp = t.lower().replace(" ", "").replace("-", "").strip()
+
         if any(x in limp for x in excluidos):
             continue
 
@@ -75,12 +82,17 @@ def detectar_codigos(textos):
 
     return max(posibles, key=len) if posibles else None
 
-# Validación
+# =====================================
+# VALIDAR CÓDIGO
+# =====================================
+
 def validar_codigo(codigo, df):
     if not re.fullmatch(r"^B\d{6,8}$", codigo):
         return False, "Formato incorrecto (B + 6-8 dígitos)."
-    if codigo in df["codigo"].values:
+
+    if codigo in df["codigo"].astype(str).values:
         return False, "Código ya existe."
+
     return True, ""
 
 # =====================================
@@ -95,15 +107,15 @@ BACKUP_PATH = "inventario_backup.xlsx"
 
 def actualizar_excel(codigo, wb, sheet, codigo_a_fila, df):
     try:
-        if codigo in codigo_a_fila:  # existe
+        if codigo in codigo_a_fila:
             fila = codigo_a_fila[codigo]
             celda = f"A{fila}"
             sheet[celda].fill = COLOR_VERDE
             sheet[celda].font = Font(bold=True)
             return f"✔ Código {codigo} marcado en verde."
 
-        else:  # no existe
-            if st.button(f"Agregar nuevo código: {codigo}"):
+        else:
+            if st.button(f"Agregar nuevo código: {codigo}", type="primary"):
                 nueva = sheet.max_row + 1
                 sheet[f"A{nueva}"] = codigo
                 sheet[f"A{nueva}"].fill = COLOR_MORADO
@@ -129,7 +141,7 @@ def crear_backup():
 
 def exportar_pdf(df, filename="inventario.pdf"):
     c = canvas.Canvas(filename, pagesize=letter)
-    c.drawString(100, 750, "Inventario Biblioteca UCC")
+    c.drawString(100, 750, "Inventario Biblioteca UCC - Medellín")
     y = 720
     for idx, row in df.iterrows():
         c.drawString(100, y, f"Código: {row['codigo']}")
@@ -140,7 +152,7 @@ def exportar_pdf(df, filename="inventario.pdf"):
     c.save()
 
 # =====================================
-# STREAMLIT
+# STREAMLIT UI
 # =====================================
 
 st.set_page_config(page_title="Inventario UCC", page_icon="📚", layout="wide")
@@ -150,13 +162,13 @@ if "df" not in st.session_state:
 
 st.title("📚 Inventario Biblioteca UCC - Medellín")
 
-# Cargar Excel
+# CARGAR EXCEL
 if not os.path.exists(EXCEL_PATH):
     st.error("No existe inventario.xlsx. Cárgalo.")
     f = st.file_uploader("Sube inventario", type="xlsx")
     if f:
         open(EXCEL_PATH, "wb").write(f.getbuffer())
-        st.success("Cargado. Refresca.")
+        st.success("Cargado. Recarga la app.")
     st.stop()
 
 wb = load_workbook(EXCEL_PATH)
@@ -174,7 +186,7 @@ codigo_a_fila = {str(row["codigo"]).strip(): i + 2 for i, row in df.iterrows()}
 # =====================================
 
 st.subheader("📷 Escanear código")
-img_file = st.camera_input("Toma una foto")
+img_file = st.camera_input("Toma una foto del código")
 
 if img_file:
     with st.spinner("Procesando..."):
@@ -193,7 +205,7 @@ if img_file:
             r = actualizar_excel(codigo, wb, sheet, codigo_a_fila, df)
             st.info(r)
 
-            if "marcado" in r or "agregado" in r:
+            if "✔" in r or "➕" in r:
                 crear_backup()
                 wb.save(EXCEL_PATH)
     else:
@@ -209,12 +221,13 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     with open(EXCEL_PATH, "rb") as f:
-        st.download_button("Excel", f, file_name="inventario.xlsx")
+        st.download_button("Descargar Excel", f, file_name="inventario.xlsx")
 
 with col2:
-    st.download_button("CSV", df.to_csv(index=False), "inventario.csv")
+    st.download_button("Descargar CSV", df.to_csv(index=False), "inventario.csv")
 
 with col3:
     exportar_pdf(df)
     with open("inventario.pdf", "rb") as f:
-        st.download_button("PDF", f, file_name="inventario.pdf")
+        st.download_button("Descargar PDF", f, file_name="inventario.pdf")
+
