@@ -212,11 +212,6 @@ if img_file:
 st.subheader("Procesar múltiples imágenes (Batch)")
 uploaded_files = st.file_uploader("Sube imágenes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 if uploaded_files:
-
-    def leer_texto(img_array):
-    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-    text = pytesseract.image_to_string(gray)
-    return [t.strip() for t in text.splitlines() if t.strip()]
     
     for uploaded_file in uploaded_files:
         img = Image.open(uploaded_file)
