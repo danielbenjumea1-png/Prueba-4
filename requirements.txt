@@ -3,5 +3,5 @@ pandas==2.1.4
 numpy==1.26.2
 pytesseract==0.3.10
 openpyxl==3.1.2
-Pillow==9.5.0  # Cambiado de 10.1.0 para evitar build errors
+Pillow==8.4.0  # Cambiado a versión estable para evitar build errors
 reportlab==4.0.7
