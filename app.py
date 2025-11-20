@@ -43,19 +43,21 @@ def preprocesar_imagen(img):
     return arr_bgr
 
 # =====================================
-# LEER TEXTO (OCR)
+# LEER TEXTO (OCR) - CON MANEJO DE ERRORES
 # =====================================
 
 def leer_texto(img_array):
-    resultado = ocr.ocr(img_array)
-
-    textos = []
-    if resultado and len(resultado) > 0:
-        for linea in resultado:
-            for palabra in linea:
-                textos.append(palabra[1][0])
-
-    return textos
+    try:
+        resultado = ocr.ocr(img_array)
+        textos = []
+        if resultado and len(resultado) > 0:
+            for linea in resultado[0]:  # resultado[0] es la lista de líneas
+                for palabra in linea:
+                    textos.append(palabra[1][0])  # palabra[1][0] es el texto detectado
+        return textos
+    except Exception as e:
+        st.error(f"Error en OCR: {str(e)}")
+        return []
 
 # =====================================
 # DETECTAR CÓDIGOS
@@ -105,31 +107,40 @@ COLOR_MORADO = PatternFill(start_color="800080", end_color="800080", fill_type="
 EXCEL_PATH = "inventario.xlsx"
 BACKUP_PATH = "inventario_backup.xlsx"
 
-def actualizar_excel(codigo, wb, sheet, codigo_a_fila, df):
-    try:
-        if codigo in codigo_a_fila:
-            fila = codigo_a_fila[codigo]
-            celda = f"A{fila}"
-            sheet[celda].fill = COLOR_VERDE
-            sheet[celda].font = Font(bold=True)
-            return f"✔ Código {codigo} marcado en verde."
-
-        else:
-            if st.button(f"Agregar nuevo código: {codigo}", type="primary"):
-                nueva = sheet.max_row + 1
-                sheet[f"A{nueva}"] = codigo
-                sheet[f"A{nueva}"].fill = COLOR_MORADO
-                sheet[f"A{nueva}"].font = Font(bold=True)
-
-                nuevo_df = pd.concat([df, pd.DataFrame({"codigo": [codigo]})], ignore_index=True)
-                st.session_state["df"] = nuevo_df
-
-                return f"➕ Código agregado: {codigo}"
-
-            return "Pendiente de confirmación."
-
-    except Exception as e:
-        return f"Error Excel: {str(e)}"
+def actualizar_excel(codigo, wb, sheet, df):
+    # Buscar fila dinámicamente para evitar inconsistencias
+    codigos_existentes = df["codigo"].astype(str).values
+    if codigo in codigos_existentes:
+        fila = df[df["codigo"] == codigo].index[0] + 2
+        celda = f"A{fila}"
+        sheet[celda].fill = COLOR_VERDE
+        sheet[celda].font = Font(bold=True)
+        return f"✔ Código {codigo} marcado en verde."
+    else:
+        # Usar session_state para manejar confirmación sin loops
+        key_confirm = f"confirmar_{codigo}"
+        if key_confirm not in st.session_state:
+            st.session_state[key_confirm] = False
+        
+        if st.button(f"Agregar nuevo código: {codigo}", key=f"btn_{codigo}"):
+            st.session_state[key_confirm] = True
+        
+        if st.session_state[key_confirm]:
+            nueva = sheet.max_row + 1
+            sheet[f"A{nueva}"] = codigo
+            sheet[f"A{nueva}"].fill = COLOR_MORADO
+            sheet[f"A{nueva}"].font = Font(bold=True)
+            
+            # Actualizar DataFrame en session_state
+            nuevo_df = pd.concat([df, pd.DataFrame({"codigo": [codigo]})], ignore_index=True)
+            st.session_state["df"] = nuevo_df
+            
+            # Limpiar estado para evitar re-agregados
+            del st.session_state[key_confirm]
+            
+            return f"➕ Código agregado: {codigo}"
+        
+        return "Pendiente de confirmación (haz clic en el botón)."
 
 def crear_backup():
     if os.path.exists(EXCEL_PATH):
@@ -167,7 +178,8 @@ if not os.path.exists(EXCEL_PATH):
     st.error("No existe inventario.xlsx. Cárgalo.")
     f = st.file_uploader("Sube inventario", type="xlsx")
     if f:
-        open(EXCEL_PATH, "wb").write(f.getbuffer())
+        with open(EXCEL_PATH, "wb") as f_file:
+            f_file.write(f.getbuffer())
         st.success("Cargado. Recarga la app.")
     st.stop()
 
@@ -178,8 +190,6 @@ if st.session_state["df"] is None:
     st.session_state["df"] = pd.read_excel(EXCEL_PATH)
 
 df = st.session_state["df"]
-
-codigo_a_fila = {str(row["codigo"]).strip(): i + 2 for i, row in df.iterrows()}
 
 # =====================================
 # ESCANEO
@@ -202,7 +212,7 @@ if img_file:
         if not valido:
             st.warning(msg)
         else:
-            r = actualizar_excel(codigo, wb, sheet, codigo_a_fila, df)
+            r = actualizar_excel(codigo, wb, sheet, df)
             st.info(r)
 
             if "✔" in r or "➕" in r:
@@ -212,7 +222,7 @@ if img_file:
         st.warning("No se detectó un código válido.")
 
 # =====================================
-# DESCARGAS
+# DESCARGAS - CORREGIDAS
 # =====================================
 
 st.subheader("⬇ Descargas")
@@ -224,10 +234,9 @@ with col1:
         st.download_button("Descargar Excel", f, file_name="inventario.xlsx")
 
 with col2:
-    st.download_button("Descargar CSV", df.to_csv(index=False), "inventario.csv")
+    st.download_button("Descargar CSV", data=df.to_csv(index=False), file_name="inventario.csv", mime="text/csv")
 
 with col3:
-    exportar_pdf(df)
+    exportar_pdf(df, "inventario.pdf")  # Pasar filename explícitamente
     with open("inventario.pdf", "rb") as f:
         st.download_button("Descargar PDF", f, file_name="inventario.pdf")
-
