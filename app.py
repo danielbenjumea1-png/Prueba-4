@@ -201,8 +201,3 @@ with col1:
 
 with col2:
     st.download_button("Descargar CSV", data=df.to_csv(index=False), file_name="inventario.csv", mime="text/csv")
-
-with col3:
-    exportar_pdf(df, "inventario.pdf")  # Pasar filename explícitamente
-    with open("inventario.pdf", "rb") as f:
-        st.download_button("Descargar PDF", f, file_name="inventario.pdf")
