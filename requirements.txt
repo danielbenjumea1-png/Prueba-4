@@ -1,8 +1,8 @@
-streamlit==1.28.1
-pandas==2.1.4
-numpy==1.26.2
-easyocr==1.7.1
-torch==2.0.1  # CPU-only para evitar builds pesados
-torchvision==0.15.2
-openpyxl==3.1.2
-Pillow==10.0.0  # Wheel precompilado
+streamlit
+pandas
+numpy
+Pillow
+openpyxl
+easyocr
+torch
+torchvision
