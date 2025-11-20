@@ -5,3 +5,4 @@ easyocr
 openpyxl
 Pillow
 reportlab
+shutil
