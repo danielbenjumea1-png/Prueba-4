@@ -1,8 +1,10 @@
 streamlit
-pandas
-numpy
-openpyxl
-Pillow
-pytesseract
+paddlepaddle==2.6.1
+paddleocr==2.7.0
 opencv-python-headless
+Pillow
+pandas
+openpyxl
 reportlab
+numpy
+
