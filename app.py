@@ -8,8 +8,6 @@ from PIL import Image, ImageEnhance
 import re
 import os
 import shutil
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 
 # =====================================
 # OCR - Pytesseract (LIGERO Y SIN PYTORCH)
@@ -129,22 +127,6 @@ def crear_backup():
         shutil.copy(EXCEL_PATH, BACKUP_PATH)
 
 # =====================================
-# PDF
-# =====================================
-
-def exportar_pdf(df, filename="inventario.pdf"):
-    c = canvas.Canvas(filename, pagesize=letter)
-    c.drawString(100, 750, "Inventario Biblioteca UCC - Medellín")
-    y = 720
-    for idx, row in df.iterrows():
-        c.drawString(100, y, f"Código: {row['codigo']}")
-        y -= 20
-        if y < 50:
-            c.showPage()
-            y = 750
-    c.save()
-
-# =====================================
 # STREAMLIT UI
 # =====================================
 
@@ -204,12 +186,12 @@ if img_file:
         st.warning("No se detectó un código válido.")
 
 # =====================================
-# DESCARGAS - CORREGIDAS
+# DESCARGAS - SOLO EXCEL Y CSV
 # =====================================
 
 st.subheader("⬇ Descargas")
 
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
     with open(EXCEL_PATH, "rb") as f:
@@ -217,11 +199,6 @@ with col1:
 
 with col2:
     st.download_button("Descargar CSV", data=df.to_csv(index=False), file_name="inventario.csv", mime="text/csv")
-
-with col3:
-    exportar_pdf(df, "inventario.pdf")  # Pasar filename explícitamente
-    with open("inventario.pdf", "rb") as f:
-        st.download_button("Descargar PDF", f, file_name="inventario.pdf")
 
 
 with col3:
