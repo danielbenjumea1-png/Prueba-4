@@ -9,195 +9,146 @@ import re
 import os
 import shutil
 
-# =====================================
-# OCR - EasyOCR
-# =====================================
+# Colores para Excel
+COLOR_VERDE = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+COLOR_MORADO = PatternFill(start_color="800080", end_color="800080", fill_type="solid")
+
+st.title("📚 Inventario Biblioteca UCC - Sede Medellín")
+st.write("La aplicación detecta códigos automáticamente y actualiza el Excel sin necesidad de presionar botones.")
+
+EXCEL_PATH = "inventario.xlsx"
+BACKUP_PATH = "inventario_backup.xlsx"
+
+if not os.path.exists(EXCEL_PATH):
+    st.error("No se encontró 'inventario.xlsx'. Sube tu inventario inicial.")
+    uploaded_file = st.file_uploader("Sube el inventario inicial", type=["xlsx"])
+    if uploaded_file:
+        with open(EXCEL_PATH, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success("Inventario cargado exitosamente. Recarga la página para comenzar.")
+    st.stop()
+
+wb = load_workbook(EXCEL_PATH)
+sheet = wb.active
+df = pd.read_excel(EXCEL_PATH)
+
+codigo_columna = None
+for col in df.columns:
+    if "codigo" in col.lower():
+        codigo_columna = col
+        break
+
+if not codigo_columna:
+    st.error("No existe una columna llamada 'codigo' en el archivo.")
+    st.stop()
+
+codigo_a_fila = {str(row[codigo_columna]).strip(): idx + 2 for idx, row in df.iterrows()}
 
 @st.cache_resource
 def cargar_ocr():
     return easyocr.Reader(['es', 'en'])
 
-ocr = cargar_ocr()
+reader = cargar_ocr()
 
-# =====================================
-# PREPROCESAR IMAGEN
-# =====================================
+st.subheader("Escanea el código")
+img_file = st.camera_input("Toma una foto del código")
 
-def preprocesar_imagen(img):
-    img_gray = img.convert("L")
+codigo_detectado = None
+
+if img_file:
+    img = Image.open(img_file)
+    img_array = np.array(img)
+
+    # Preprocesar imagen para mejor OCR
+    img_gray = img.convert('L')
     img_enhanced = ImageEnhance.Contrast(img_gray).enhance(2.0)
-    arr = np.array(img_enhanced)
-    return arr
+    img_array = np.array(img_enhanced)
 
-# =====================================
-# LEER TEXTO (OCR) - CON MANEJO DE ERRORES
-# =====================================
+    textos = reader.readtext(img_array, detail=0)
 
-def leer_texto(img_array):
-    try:
-        textos = ocr.readtext(img_array, detail=0)  # detail=0 para solo texto
-        return textos
-    except Exception as e:
-        st.error(f"Error en OCR: {str(e)}")
-        return []
-
-# =====================================
-# DETECTAR CÓDIGOS
-# =====================================
-
-def detectar_codigos(textos):
-    excluidos = [
-        "sistemadeinformacion", "bibliografico", "biblioteca",
-        "universidad", "cooperativa", "colombia"
+    frases_prohibidas = [
+        "sistemadeinformacionbibliografico",
+        "sistemadeinformacion",
+        "bibliografico",
+        "biblioteca",
+        "universidad",
+        "cooperativa",
+        "colombia"
     ]
 
-    posibles = []
+    posibles_codigos = []
 
     for t in textos:
-        limp = t.lower().replace(" ", "").replace("-", "").strip()
+        t_limpio = t.lower().replace(" ", "").replace("-", "").strip()
 
-        if any(x in limp for x in excluidos):
+        if any(frase in t_limpio for frase in frases_prohibidas):
             continue
 
-        if re.fullmatch(r"b\d{6,8}", limp):
-            posibles.append(limp.upper())
-        elif limp.startswith("b") and len(limp) >= 7:
-            posibles.append(limp.upper())
+        if re.fullmatch(r"b\d{6,8}", t_limpio):
+            posibles_codigos.append(t_limpio.upper())
+            continue
 
-    return max(posibles, key=len) if posibles else None
+        if t_limpio.startswith("b") and len(t_limpio) >= 7:
+            posibles_codigos.append(t_limpio.upper())
 
-# =====================================
-# VALIDAR CÓDIGO
-# =====================================
+    if posibles_codigos:
+        codigo_detectado = max(posibles_codigos, key=len)
+        st.success(f"Código detectado: **{codigo_detectado}**")
 
-def validar_codigo(codigo, df):
-    if not re.fullmatch(r"^B\d{6,8}$", codigo):
-        return False, "Formato incorrecto (B + 6-8 dígitos)."
+        if codigo_detectado in codigo_a_fila:
+            fila = codigo_a_fila[codigo_detectado]
+            celda = f"A{fila}"
+            sheet[celda].fill = COLOR_VERDE
+            sheet[celda].font = Font(bold=True)
+            st.success(f"✔ Código {codigo_detectado} encontrado y marcado en verde.")
+        else:
+            nueva_fila = sheet.max_row + 1
+            sheet[f"A{nueva_fila}"] = codigo_detectado
+            sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
+            sheet[f"A{nueva_fila}"].font = Font(bold=True)
+            # Actualizar el mapeo para futuros escaneos
+            codigo_a_fila[codigo_detectado] = nueva_fila
+            st.warning(f"➕ Código nuevo agregado: {codigo_detectado}")
 
-    if codigo in df["codigo"].astype(str).values:
-        return False, "Código ya existe."
+        wb.save(EXCEL_PATH)
+        # Crear backup
+        crear_backup()
 
-    return True, ""
+    else:
+        st.warning("No se encontró un código válido en la imagen.")
+        
+st.subheader("Ingresar código manualmente")
 
-# =====================================
-# EXCEL
-# =====================================
+codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:")
 
-COLOR_VERDE = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
-COLOR_MORADO = PatternFill(start_color="800080", end_color="800080", fill_type="solid")
+if codigo_manual:
+    codigo_manual = codigo_manual.strip().upper()
 
-EXCEL_PATH = "inventario.xlsx"
-BACKUP_PATH = "inventario_backup.xlsx"
-
-def actualizar_excel(codigo, wb, sheet, df):
-    # Buscar fila dinámicamente para evitar inconsistencias
-    codigos_existentes = df["codigo"].astype(str).values
-    if codigo in codigos_existentes:
-        fila = df[df["codigo"] == codigo].index[0] + 2
+    if codigo_manual in codigo_a_fila:
+        fila = codigo_a_fila[codigo_manual]
         celda = f"A{fila}"
         sheet[celda].fill = COLOR_VERDE
         sheet[celda].font = Font(bold=True)
-        return f"✔ Código {codigo} marcado en verde."
-    else:
-        # Usar session_state para manejar confirmación sin loops
-        key_confirm = f"confirmar_{codigo}"
-        if key_confirm not in st.session_state:
-            st.session_state[key_confirm] = False
-        
-        if st.button(f"Agregar nuevo código: {codigo}", key=f"btn_{codigo}"):
-            st.session_state[key_confirm] = True
-        
-        if st.session_state[key_confirm]:
-            nueva = sheet.max_row + 1
-            sheet[f"A{nueva}"] = codigo
-            sheet[f"A{nueva}"].fill = COLOR_MORADO
-            sheet[f"A{nueva}"].font = Font(bold=True)
-            
-            # Actualizar DataFrame en session_state
-            nuevo_df = pd.concat([df, pd.DataFrame({"codigo": [codigo]})], ignore_index=True)
-            st.session_state["df"] = nuevo_df
-            
-            # Limpiar estado para evitar re-agregados
-            del st.session_state[key_confirm]
-            
-            return f"➕ Código agregado: {codigo}"
-        
-        return "Pendiente de confirmación (haz clic en el botón)."
+        st.success(f"✔ Código {codigo_manual} encontrado y marcado en verde.")
 
+    else:
+        nueva_fila = sheet.max_row + 1
+        sheet[f"A{nueva_fila}"] = codigo_manual
+        sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
+        sheet[f"A{nueva_fila}"].font = Font(bold=True)
+        codigo_a_fila[codigo_manual] = nueva_fila
+        st.warning(f"➕ Código nuevo agregado manualmente: {codigo_manual}")
+
+    wb.save(EXCEL_PATH)
+    crear_backup()
+    
+st.subheader("Inventario actualizado")
+st.dataframe(pd.read_excel(EXCEL_PATH))
+
+with open(EXCEL_PATH, "rb") as f:
+    st.download_button("Descargar inventario actualizado", f, file_name="inventario_actualizado.xlsx")
+
+# Función para crear backup
 def crear_backup():
     if os.path.exists(EXCEL_PATH):
         shutil.copy(EXCEL_PATH, BACKUP_PATH)
-
-# =====================================
-# STREAMLIT UI
-# =====================================
-
-st.set_page_config(page_title="Inventario UCC", page_icon="📚", layout="wide")
-
-if "df" not in st.session_state:
-    st.session_state["df"] = None
-
-st.title("📚 Inventario Biblioteca UCC - Medellín")
-
-# CARGAR EXCEL
-if not os.path.exists(EXCEL_PATH):
-    st.error("No existe inventario.xlsx. Cárgalo.")
-    f = st.file_uploader("Sube inventario", type="xlsx")
-    if f:
-        with open(EXCEL_PATH, "wb") as f_file:
-            f_file.write(f.getbuffer())
-        st.success("Cargado. Recarga la app.")
-    st.stop()
-
-wb = load_workbook(EXCEL_PATH)
-sheet = wb.active
-
-if st.session_state["df"] is None:
-    st.session_state["df"] = pd.read_excel(EXCEL_PATH)
-
-df = st.session_state["df"]
-
-# =====================================
-# ESCANEO
-# =====================================
-
-st.subheader("📷 Escanear código")
-img_file = st.camera_input("Toma una foto del código")
-
-if img_file:
-    with st.spinner("Procesando..."):
-        img = Image.open(img_file)
-        arr = preprocesar_imagen(img)
-        textos = leer_texto(arr)
-        codigo = detectar_codigos(textos)
-
-    if codigo:
-        st.success(f"Código detectado: **{codigo}**")
-        valido, msg = validar_codigo(codigo, df)
-
-        if not valido:
-            st.warning(msg)
-        else:
-            r = actualizar_excel(codigo, wb, sheet, df)
-            st.info(r)
-
-            if "✔" in r or "➕" in r:
-                crear_backup()
-                wb.save(EXCEL_PATH)
-    else:
-        st.warning("No se detectó un código válido.")
-
-# =====================================
-# DESCARGAS - SOLO EXCEL Y CSV (SIN COL3)
-# =====================================
-
-st.subheader("⬇ Descargas")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    with open(EXCEL_PATH, "rb") as f:
-        st.download_button("Descargar Excel", f, file_name="inventario.xlsx")
-
-with col2:
-    st.download_button("Descargar CSV", data=df.to_csv(index=False), file_name="inventario.csv", mime="text/csv")
