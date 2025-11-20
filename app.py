@@ -188,7 +188,7 @@ if img_file:
         st.warning("No se detectó un código válido.")
 
 # =====================================
-# DESCARGAS - SOLO EXCEL Y CSV
+# DESCARGAS - SOLO EXCEL Y CSV (SIN COL3)
 # =====================================
 
 st.subheader("⬇ Descargas")
