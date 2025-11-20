@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import cv2
+import pytesseract
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font
 from PIL import Image, ImageEnhance
@@ -10,21 +10,12 @@ import os
 import shutil
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from paddleocr import PaddleOCR
 
 # =====================================
-# OCR - PaddleOCR (FUNCIONAL EN STREAMLIT)
+# OCR - Pytesseract (LIGERO Y SIN PYTORCH)
 # =====================================
 
-@st.cache_resource
-def cargar_ocr():
-    return PaddleOCR(
-        lang="es",
-        use_angle_cls=False,   # <-- Streamlit Cloud NO soporta cls=True en algunas builds
-        show_log=False
-    )
-
-ocr = cargar_ocr()
+# Nota: Asegúrate de que Tesseract esté instalado en el sistema (ver requirements.txt)
 
 # =====================================
 # PREPROCESAR IMAGEN
@@ -33,30 +24,21 @@ ocr = cargar_ocr()
 def preprocesar_imagen(img):
     img_gray = img.convert("L")
     img_enhanced = ImageEnhance.Contrast(img_gray).enhance(2.0)
-    arr = np.array(img_enhanced)
-
-    if len(arr.shape) == 2:
-        arr_bgr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
-    else:
-        arr_bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-
-    return arr_bgr
+    return img_enhanced  # Devuelve PIL Image para pytesseract
 
 # =====================================
 # LEER TEXTO (OCR) - CON MANEJO DE ERRORES
 # =====================================
 
-def leer_texto(img_array):
+def leer_texto(img_pil):
     try:
-        resultado = ocr.ocr(img_array)
-        textos = []
-        if resultado and len(resultado) > 0:
-            for linea in resultado[0]:  # resultado[0] es la lista de líneas
-                for palabra in linea:
-                    textos.append(palabra[1][0])  # palabra[1][0] es el texto detectado
+        # Configurar pytesseract para español e inglés
+        custom_config = r'--oem 3 --psm 6 -l spa+eng'
+        texto_completo = pytesseract.image_to_string(img_pil, config=custom_config)
+        textos = texto_completo.split()  # Divide en palabras
         return textos
     except Exception as e:
-        st.error(f"Error en OCR: {str(e)}")
+        st.error(f"Error en OCR: {str(e)}. Asegúrate de que Tesseract esté instalado.")
         return []
 
 # =====================================
@@ -201,8 +183,8 @@ img_file = st.camera_input("Toma una foto del código")
 if img_file:
     with st.spinner("Procesando..."):
         img = Image.open(img_file)
-        arr = preprocesar_imagen(img)
-        textos = leer_texto(arr)
+        img_procesada = preprocesar_imagen(img)
+        textos = leer_texto(img_procesada)
         codigo = detectar_codigos(textos)
 
     if codigo:
@@ -235,6 +217,12 @@ with col1:
 
 with col2:
     st.download_button("Descargar CSV", data=df.to_csv(index=False), file_name="inventario.csv", mime="text/csv")
+
+with col3:
+    exportar_pdf(df, "inventario.pdf")  # Pasar filename explícitamente
+    with open("inventario.pdf", "rb") as f:
+        st.download_button("Descargar PDF", f, file_name="inventario.pdf")
+
 
 with col3:
     exportar_pdf(df, "inventario.pdf")  # Pasar filename explícitamente
