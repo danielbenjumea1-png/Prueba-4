@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import easyocr
+import pytesseract
+import cv2
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font
 from PIL import Image, ImageEnhance
@@ -25,7 +26,7 @@ BACKUP_PATH = "inventario_backup.xlsx"
 # Función para cargar OCR (cacheada)
 @st.cache_resource
 def cargar_ocr():
-    return easyocr.Reader(['es', 'en'])
+    return True
 
 # Función para preprocesar imagen (mejora OCR)
 def preprocesar_imagen(img):
