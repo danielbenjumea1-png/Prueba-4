@@ -13,8 +13,13 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 def leer_texto(img_array):
+    # Convertir imagen a escala de grises
     gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+
+    # Ejecutar OCR
     text = pytesseract.image_to_string(gray)
+
+    # Limpiar texto en líneas (quita vacíos)
     return [t.strip() for t in text.splitlines() if t.strip()]
 
 # Configuración de la página
