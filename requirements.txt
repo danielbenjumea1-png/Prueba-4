@@ -1,10 +1,11 @@
-streamlit
-paddlepaddle==2.6.1
+streamlit==1.39.0
+pillow
+numpy
+opencv-python-headless==4.9.0.80
 paddleocr==2.7.0
-opencv-python-headless
-Pillow
+paddlepaddle==2.4.2
 pandas
 openpyxl
 reportlab
-numpy
+
 
