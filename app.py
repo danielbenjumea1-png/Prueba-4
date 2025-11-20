@@ -12,6 +12,11 @@ import shutil
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+def leer_texto(img_array):
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray)
+    return [t.strip() for t in text.splitlines() if t.strip()]
+
 # Configuración de la página
 st.set_page_config(page_title="📚 Inventario Biblioteca UCC - Sede Medellín", page_icon="📚", layout="wide")
 
@@ -171,6 +176,11 @@ st.subheader("Escanea el código")
 img_file = st.camera_input("Toma una foto del código")
 codigo_detectado = None
 
+def leer_texto(img_array):
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray)
+    return [t.strip() for t in text.splitlines() if t.strip()]
+
 if img_file:
     with st.spinner("Procesando imagen..."):
         img = Image.open(img_file)
@@ -197,6 +207,12 @@ if img_file:
 st.subheader("Procesar múltiples imágenes (Batch)")
 uploaded_files = st.file_uploader("Sube imágenes", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 if uploaded_files:
+
+    def leer_texto(img_array):
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    text = pytesseract.image_to_string(gray)
+    return [t.strip() for t in text.splitlines() if t.strip()]
+    
     for uploaded_file in uploaded_files:
         img = Image.open(uploaded_file)
         img_array = preprocesar_imagen(img)
