@@ -19,6 +19,11 @@ st.write("La aplicación detecta códigos automáticamente y actualiza el Excel 
 EXCEL_PATH = "inventario.xlsx"
 BACKUP_PATH = "inventario_backup.xlsx"
 
+# Función para crear backup
+def crear_backup():
+    if os.path.exists(EXCEL_PATH):
+        shutil.copy(EXCEL_PATH, BACKUP_PATH)
+
 if not os.path.exists(EXCEL_PATH):
     st.error("No se encontró 'inventario.xlsx'. Sube tu inventario inicial.")
     uploaded_file = st.file_uploader("Sube el inventario inicial", type=["xlsx"])
