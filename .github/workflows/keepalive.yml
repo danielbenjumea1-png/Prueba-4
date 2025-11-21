@@ -1,0 +1,23 @@
+name: Keep Streamlit Alive
+
+on:
+  schedule:
+    - cron: "0 */10 * * *"   # cada 10 horas
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Create empty commit
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git commit --allow-empty -m "keepalive: empty commit" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          git push
