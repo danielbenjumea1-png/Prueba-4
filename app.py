@@ -152,8 +152,3 @@ st.dataframe(pd.read_excel(EXCEL_PATH))
 
 with open(EXCEL_PATH, "rb") as f:
     st.download_button("Descargar inventario actualizado", f, file_name="inventario_actualizado.xlsx")
-
-# Función para crear backup
-def crear_backup():
-    if os.path.exists(EXCEL_PATH):
-        shutil.copy(EXCEL_PATH, BACKUP_PATH)
