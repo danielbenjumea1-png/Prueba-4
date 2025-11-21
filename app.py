@@ -122,14 +122,6 @@ if img_file:
     else:
         st.warning("No se encontró un código válido en la imagen.")
         
-st.subheader("Ingresar código manualmente")
-
-# Crear el campo con estado
-codigo_manual = st.text_input(
-    "Escribe el código si no puedes escanearlo:",
-    key="codigo_manual_input"
-)
-
 # --- Callback para limpiar el campo después de procesar ---
 def limpiar_input():
     st.session_state.codigo_manual_input = ""
