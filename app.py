@@ -129,27 +129,30 @@ if 'codigo_manual' not in st.session_state:
 
 codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:", value=st.session_state['codigo_manual'])
 
-if codigo_manual:
-    codigo_manual = codigo_manual.strip().upper()
+if st.button("Procesar Código Manual"):
+    if codigo_manual:
+        codigo_manual = codigo_manual.strip().upper()
 
-    if codigo_manual in codigo_a_fila:
-        fila = codigo_a_fila[codigo_manual]
-        celda = f"A{fila}"
-        sheet[celda].fill = COLOR_VERDE
-        sheet[celda].font = Font(bold=True)
-        st.success(f"✔ Código {codigo_manual} encontrado y marcado en verde.")
+        if codigo_manual in codigo_a_fila:
+            fila = codigo_a_fila[codigo_manual]
+            celda = f"A{fila}"
+            sheet[celda].fill = COLOR_VERDE
+            sheet[celda].font = Font(bold=True)
+            st.success(f"✔ Código {codigo_manual} encontrado y marcado en verde.")
 
+        else:
+            nueva_fila = sheet.max_row + 1
+            sheet[f"A{nueva_fila}"] = codigo_manual
+            sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
+            sheet[f"A{nueva_fila}"].font = Font(bold=True)
+            codigo_a_fila[codigo_manual] = nueva_fila
+            st.warning(f"➕ Código nuevo agregado manualmente: {codigo_manual}")
+
+        wb.save(EXCEL_PATH)
+        crear_backup()
+        st.session_state['codigo_manual'] = ''  # Borrar el input después de procesar
     else:
-        nueva_fila = sheet.max_row + 1
-        sheet[f"A{nueva_fila}"] = codigo_manual
-        sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
-        sheet[f"A{nueva_fila}"].font = Font(bold=True)
-        codigo_a_fila[codigo_manual] = nueva_fila
-        st.warning(f"➕ Código nuevo agregado manualmente: {codigo_manual}")
-
-    wb.save(EXCEL_PATH)
-    crear_backup()
-    st.session_state['codigo_manual'] = ''
+        st.warning("Por favor, ingresa un código antes de procesar.")
     
 st.subheader("Inventario actualizado")
 st.dataframe(pd.read_excel(EXCEL_PATH))
