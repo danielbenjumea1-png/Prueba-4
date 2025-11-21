@@ -111,7 +111,6 @@ if img_file:
             sheet[f"A{nueva_fila}"] = codigo_detectado
             sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
             sheet[f"A{nueva_fila}"].font = Font(bold=True)
-
             # Actualizar el mapeo para futuros escaneos
             codigo_a_fila[codigo_detectado] = nueva_fila
             st.warning(f"➕ Código nuevo agregado: {codigo_detectado}")
@@ -122,7 +121,7 @@ if img_file:
 
     else:
         st.warning("No se encontró un código válido en la imagen.")
-
+        
 st.subheader("Ingresar código manualmente")
 
 codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:")
@@ -147,7 +146,7 @@ if codigo_manual:
 
     wb.save(EXCEL_PATH)
     crear_backup()
-
+    
 st.subheader("Inventario actualizado")
 st.dataframe(pd.read_excel(EXCEL_PATH))
 
