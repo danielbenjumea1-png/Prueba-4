@@ -124,28 +124,35 @@ if img_file:
         
 st.subheader("Ingresar código manualmente")
 
-codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:")
+# Crear el campo con estado
+codigo_manual = st.text_input(
+    "Escribe el código si no puedes escanearlo:",
+    key="codigo_manual_input"
+)
 
+# Ejecutar cuando haya algo escrito + se presione Enter
 if codigo_manual:
-    codigo_manual = codigo_manual.strip().upper()
+    codigo = codigo_manual.strip().upper()
 
-    if codigo_manual in codigo_a_fila:
-        fila = codigo_a_fila[codigo_manual]
+    if codigo in codigo_a_fila:
+        fila = codigo_a_fila[codigo]
         celda = f"A{fila}"
         sheet[celda].fill = COLOR_VERDE
         sheet[celda].font = Font(bold=True)
-        st.success(f"✔ Código {codigo_manual} encontrado y marcado en verde.")
-
+        st.success(f"✔ Código {codigo} encontrado y marcado en verde.")
     else:
         nueva_fila = sheet.max_row + 1
-        sheet[f"A{nueva_fila}"] = codigo_manual
+        sheet[f"A{nueva_fila}"] = codigo
         sheet[f"A{nueva_fila}"].fill = COLOR_MORADO
         sheet[f"A{nueva_fila}"].font = Font(bold=True)
-        codigo_a_fila[codigo_manual] = nueva_fila
-        st.warning(f"➕ Código nuevo agregado manualmente: {codigo_manual}")
+        codigo_a_fila[codigo] = nueva_fila
+        st.warning(f"➕ Código nuevo agregado manualmente: {codigo}")
 
     wb.save(EXCEL_PATH)
     crear_backup()
+
+    # 🔥 BORRAR AUTOMÁTICAMENTE EL CAMPO DESPUÉS DE USARLO
+    st.session_state.codigo_manual_input = ""
     
 st.subheader("Inventario actualizado")
 st.dataframe(pd.read_excel(EXCEL_PATH))
