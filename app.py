@@ -130,7 +130,21 @@ codigo_manual = st.text_input(
     key="codigo_manual_input"
 )
 
-# Ejecutar cuando haya algo escrito + se presione Enter
+# --- Callback para limpiar el campo después de procesar ---
+def limpiar_input():
+    st.session_state.codigo_manual_input = ""
+
+
+st.subheader("Ingresar código manualmente")
+
+# Caja de texto con callback
+codigo_manual = st.text_input(
+    "Escribe el código si no puedes escanearlo:",
+    key="codigo_manual_input",
+)
+
+
+# Si el usuario escribió algo y presionó Enter
 if codigo_manual:
     codigo = codigo_manual.strip().upper()
 
@@ -151,7 +165,7 @@ if codigo_manual:
     wb.save(EXCEL_PATH)
     crear_backup()
 
-    # 🔥 BORRAR AUTOMÁTICAMENTE EL CAMPO DESPUÉS DE USARLO
+    # Ejecuta el limpiado en un ciclo posterior (seguro)
     st.session_state.codigo_manual_input = ""
     
 st.subheader("Inventario actualizado")
