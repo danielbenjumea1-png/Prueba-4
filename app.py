@@ -124,7 +124,10 @@ if img_file:
         
 st.subheader("Ingresar código manualmente")
 
-codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:")
+if 'codigo_manual' not in st.session_state:
+    st.session_state['codigo_manual'] = ''
+
+codigo_manual = st.text_input("Escribe el código si no puedes escanearlo:", value=st.session_state['codigo_manual'])
 
 if codigo_manual:
     codigo_manual = codigo_manual.strip().upper()
@@ -146,6 +149,7 @@ if codigo_manual:
 
     wb.save(EXCEL_PATH)
     crear_backup()
+    st.session_state['codigo_manual'] = ''
     
 st.subheader("Inventario actualizado")
 st.dataframe(pd.read_excel(EXCEL_PATH))
