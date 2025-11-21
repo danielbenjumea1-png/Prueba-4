@@ -150,7 +150,8 @@ if st.button("Procesar Código Manual"):
 
         wb.save(EXCEL_PATH)
         crear_backup()
-        st.session_state['codigo_manual'] = ''  # Borrar el input después de procesar
+        st.session_state['codigo_manual'] = ''  # Resetear el input
+        st.rerun()  # Forzar recarga para vaciar el campo inmediatamente
     else:
         st.warning("Por favor, ingresa un código antes de procesar.")
     
